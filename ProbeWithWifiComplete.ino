@@ -283,6 +283,87 @@ void sendPOST() {
 }
 
 
+bool fetchProbeConfig() {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[CFG] No WiFi, skipping config fetch");
+    return false;
+  }
+
+  String url = String("http://34.160.35.22/api/probeconfig?prefix=") + PREFIX;
+  Serial.println("[CFG] Fetching: " + url);
+
+  HTTPClient http;
+  http.begin(url);
+  int code = http.GET();
+
+  if (code <= 0) {
+    Serial.printf("[CFG] HTTP error: %d (%s)\n", code, http.errorToString(code).c_str());
+    http.end();
+    return false;
+  }
+
+  if (code != 200) {
+    Serial.printf("[CFG] Server returned code %d\n", code);
+    http.end();
+    return false;
+  }
+
+  String payload = http.getString();
+  http.end();
+  Serial.println("[CFG] Received: " + payload);
+
+  // ----------------------------
+  // Parse JSON manually (fast + minimal)
+  // ----------------------------
+  int idx = payload.indexOf("\"refresh\"");
+  if (idx < 0) {
+    Serial.println("[CFG] No 'refresh' field in JSON");
+    return false;
+  }
+
+  idx = payload.indexOf(":", idx);
+  if (idx < 0) return false;
+
+  int end = payload.indexOf(",", idx);
+  if (end < 0) end = payload.indexOf("}", idx);
+  if (end < 0) return false;
+
+  String refreshStr = payload.substring(idx + 1, end);
+  refreshStr.trim();
+  int newFreq = refreshStr.toInt();
+
+  if (newFreq <= 0 || newFreq > 600) {
+    Serial.printf("[CFG] Invalid refresh value: %d\n", newFreq);
+    return false;
+  }
+
+  // ----------------------------
+  // Apply + Save to Flash
+  // ----------------------------
+  updateFrequencySeconds = newFreq;
+
+  prefs.begin("config", false);
+  prefs.putUInt("updateFreq", updateFrequencySeconds);
+  prefs.end();
+
+  Serial.printf("[CFG] Refresh interval updated to %d seconds and saved.\n", newFreq);
+
+#if HAS_SCREEN
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.setTextSize(2);
+  display.print("CFG OK");
+  display.setTextSize(1);
+  display.setCursor(0, 24);
+  display.printf("refresh=%d", updateFrequencySeconds);
+  display.display();
+  delay(800);
+#endif
+
+  return true;
+}
+
+
 // =======================
 // --- DISPLAY ---
 // =======================
@@ -324,10 +405,25 @@ void updateDisplay() {
   display.setCursor(0, 56);
 
   String ipShort = "--";
+
   if (WiFi.status() == WL_CONNECTED) {
+
       IPAddress ip = WiFi.localIP();
-      ipShort = String(ip[2]) + "." + String(ip[3]);   // last two octets only
+      ipShort = String(ip[2]) + "." + String(ip[3]);   // show only last 2 octets
+
+      // Print full IP to Serial (for debugging)
+      Serial.print("WiFi connected, IP: ");
+      Serial.println(ip);
+
+      // Fetch remote config once per boot
+      static bool configFetched = false;
+      if (!configFetched) {
+        if (fetchProbeConfig()) {
+          configFetched = true;
+        }
+      }
   }
+
 
   display.printf("%s  %s  %s",
                  ipShort.c_str(),
