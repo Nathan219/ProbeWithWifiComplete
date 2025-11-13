@@ -8,7 +8,7 @@
 // --- PROBE CONFIG ---
 // =======================
 
-#define PREFIX "F17R"    // 4-char prefix for this probe
+#define PREFIX "F17H"    // 4-char prefix for this probe
 
 #define SDA_PIN 4
 #define SCL_PIN 7
@@ -33,7 +33,7 @@ HardwareSerial extSerial(1);  // use UART1 peripheral
 // --- DISPLAY CONFIG ---
 // =======================
 #define HAS_SCREEN  true
-#define BIG_BOY     true
+#define BIG_BOY     false
 
 #if HAS_SCREEN
   #include <Adafruit_GFX.h>
@@ -312,14 +312,15 @@ void updateDisplay() {
   display.setTextColor(SSD1306_WHITE);
 
   // Line 1: CO2 / Temp / Humidity
-  display.setCursor(0, 46);
+ display.setCursor(0, 46);
   if (haveCO2) {
-    display.printf("CO2:%u  T:%.1f  H:%.1f", co2, temp, hum);
+      display.printf("C:%u  T:%.1f  H:%d", co2, temp, (int)hum);
   } else {
-    display.print("CO2:--  T:--.-  H:--.-");
+      display.print("C:--  T:--.-  H:--");
   }
 
-  // Line 2: short IP, PREFIX, POST status
+
+    // Line 2: short IP, PREFIX, POST status
   display.setCursor(0, 56);
 
   String ipShort = "--";
@@ -328,7 +329,7 @@ void updateDisplay() {
       ipShort = String(ip[2]) + "." + String(ip[3]);   // last two octets only
   }
 
-  display.printf("%s    %s    %s",
+  display.printf("%s  %s  %s",
                  ipShort.c_str(),
                  PREFIX,
                  lastPostResult.c_str());
