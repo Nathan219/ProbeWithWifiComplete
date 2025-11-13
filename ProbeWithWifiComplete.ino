@@ -8,7 +8,10 @@
 // --- PROBE CONFIG ---
 // =======================
 
-#define PREFIX "F17H"    // 4-char prefix for this probe
+
+// CHANGE THESE!!!!
+#define PREFIX      "F17R"    // 4-char prefix for this probe
+#define BIG_BOY     true
 
 #define SDA_PIN 4
 #define SCL_PIN 7
@@ -33,7 +36,6 @@ HardwareSerial extSerial(1);  // use UART1 peripheral
 // --- DISPLAY CONFIG ---
 // =======================
 #define HAS_SCREEN  true
-#define BIG_BOY     false
 
 #if HAS_SCREEN
   #include <Adafruit_GFX.h>
